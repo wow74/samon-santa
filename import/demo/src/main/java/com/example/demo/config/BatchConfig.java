@@ -5,6 +5,7 @@ import com.example.demo.listener.ProcessListener;
 import com.example.demo.listener.ReadListener;
 import com.example.demo.listener.WriteListener;
 import com.example.demo.processor.EvaluationProcessor;
+import com.example.demo.processor.ExistsCheckProcessor;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.StepScope;
@@ -12,12 +13,14 @@ import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider;
 import org.springframework.batch.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
 import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper;
+import org.springframework.batch.item.support.CompositeItemProcessor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.batch.BatchDataSource;
@@ -33,15 +36,13 @@ import javax.sql.DataSource;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 @Configuration
 public class BatchConfig {
 
   @Value("${csv.path}")
   private String csvPath;
-
-  @Autowired
-  private EvaluationProcessor evaluationProcessor;
 
   @Autowired
   private ReadListener readListener;
@@ -51,6 +52,12 @@ public class BatchConfig {
 
   @Autowired
   private WriteListener writeListener;
+
+  @Autowired
+  private EvaluationProcessor evaluationProcessor;
+
+  @Autowired
+  private ExistsCheckProcessor existsCheckProcessor;
 
   @Bean
   @ConfigurationProperties("spring.datasource.h2")
@@ -112,11 +119,19 @@ public class BatchConfig {
   }
 
   @Bean
+  @StepScope
+  public ItemProcessor<Yorishiro, Yorishiro> compositeProcessor() {
+    CompositeItemProcessor<Yorishiro, Yorishiro> compositeItemProcessor = new CompositeItemProcessor<>();
+    compositeItemProcessor.setDelegates(Arrays.asList(existsCheckProcessor, evaluationProcessor));
+    return compositeItemProcessor;
+  }
+
+  @Bean
   public Step imoprtStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
     return new StepBuilder("ImportStep", jobRepository)
             .<Yorishiro, Yorishiro>chunk(2, transactionManager)
             .reader(csvReader()).listener(readListener)
-            .processor(evaluationProcessor).listener(processListener)
+            .processor(compositeProcessor()).listener(processListener)
             .writer(jdbcWriter()).listener(writeListener)
             .build();
   }
