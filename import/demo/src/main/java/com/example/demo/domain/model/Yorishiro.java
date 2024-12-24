@@ -1,13 +1,23 @@
 package com.example.demo.domain.model;
 
+import jakarta.validation.constraints.*;
 import lombok.Data;
 import org.apache.logging.log4j.util.Strings;
 
 @Data
 public class Yorishiro {
-  private int id;
+
+  @NotNull
+  private Integer id;
+
+  @NotBlank
   private String name;
+
+  @Min(0)
+  @Max(100)
   private int age;
+
+  // evaluationはbatch制御のスキップや分岐でチェックするため、ここではチェックをしない
   private int evaluation;
   private String evaluationString;
 

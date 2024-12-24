@@ -21,6 +21,7 @@ import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper;
 import org.springframework.batch.item.support.CompositeItemProcessor;
+import org.springframework.batch.item.validator.BeanValidatingItemProcessor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.batch.BatchDataSource;
@@ -35,6 +36,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import javax.sql.DataSource;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
+import java.net.BindException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
@@ -100,6 +102,9 @@ public class BatchConfig {
             .names(title)
             .fieldSetMapper(new BeanWrapperFieldSetMapper<Yorishiro>() {
               {
+                // 依り代クラスにcsvデータをバインドする
+                // int型にnullを入れようとするとバインドエラーになる
+                // nullのバリデーションチェックをするならInteger型にする
                 setTargetType(Yorishiro.class);
               }
             })
@@ -122,8 +127,16 @@ public class BatchConfig {
   @StepScope
   public ItemProcessor<Yorishiro, Yorishiro> compositeProcessor() {
     CompositeItemProcessor<Yorishiro, Yorishiro> compositeItemProcessor = new CompositeItemProcessor<>();
-    compositeItemProcessor.setDelegates(Arrays.asList(existsCheckProcessor, evaluationProcessor));
+    compositeItemProcessor.setDelegates(Arrays.asList(validationProcessor(), existsCheckProcessor, evaluationProcessor));
     return compositeItemProcessor;
+  }
+
+  @Bean
+  @StepScope
+  public BeanValidatingItemProcessor<Yorishiro> validationProcessor() {
+    BeanValidatingItemProcessor<Yorishiro> validatingItemProcessor = new BeanValidatingItemProcessor<>();
+    validatingItemProcessor.setFilter(true);
+    return validatingItemProcessor;
   }
 
   @Bean
