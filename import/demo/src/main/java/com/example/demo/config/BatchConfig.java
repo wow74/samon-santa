@@ -4,6 +4,7 @@ import com.example.demo.domain.model.Yorishiro;
 import com.example.demo.listener.ProcessListener;
 import com.example.demo.listener.ReadListener;
 import com.example.demo.listener.WriteListener;
+import com.example.demo.listener.YorishiroSkipListener;
 import com.example.demo.processor.EvaluationProcessor;
 import com.example.demo.processor.ExistsCheckProcessor;
 import org.springframework.batch.core.Job;
@@ -53,6 +54,9 @@ public class BatchConfig {
 
   @Autowired
   private WriteListener writeListener;
+
+  @Autowired
+  private YorishiroSkipListener yorishiroSkipListener;
 
   @Autowired
   private EvaluationProcessor evaluationProcessor;
@@ -145,6 +149,10 @@ public class BatchConfig {
             .reader(csvReader()).listener(readListener)
             .processor(compositeProcessor()).listener(processListener)
             .writer(jdbcWriter()).listener(writeListener)
+            .faultTolerant()
+            .skipLimit(Integer.MAX_VALUE)
+            .skip(RuntimeException.class)
+            .listener(yorishiroSkipListener)
             .build();
   }
 

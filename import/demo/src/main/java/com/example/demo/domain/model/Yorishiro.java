@@ -11,6 +11,7 @@ import org.apache.logging.log4j.util.Strings;
 public class Yorishiro {
 
   @NotNull
+  @Min(1)
   private Integer id;
 
   @NotBlank
@@ -20,7 +21,8 @@ public class Yorishiro {
   @Max(100)
   private int age;
 
-  // evaluationはbatch制御のスキップや分岐でチェックするため、ここではチェックをしない
+  @Min(0)
+  @Max(2)
   private int evaluation;
   private String evaluationString;
 
