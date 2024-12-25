@@ -8,6 +8,8 @@ import com.example.demo.listener.ReadListener;
 import com.example.demo.listener.WriteListener;
 import com.example.demo.processor.EvaluationProcessor;
 import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobExecutionListener;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
@@ -32,8 +34,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.WritableResource;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
@@ -138,21 +142,38 @@ public class BatchConfig {
   }
 
   @Bean
+  public TaskExecutor asyncTaskExecutor() {
+    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+    executor.setCorePoolSize(3);
+    executor.setMaxPoolSize(3);
+    executor.setThreadNamePrefix("task_");
+    executor.initialize();
+    return executor;
+  }
+
+  @Bean
   public Step exportStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) throws Exception {
     return new StepBuilder("ExportStep", jobRepository)
             .<Yorishiro, Yorishiro>chunk(2, transactionManager)
             .reader(jdbcPagingReader()).listener(readListener)
             .processor(evaluationProcessor).listener(processListener)
             .writer(csvWriter()).listener(writeListener)
+            .taskExecutor(asyncTaskExecutor())
             .build();
   }
 
   @Bean
-  public Job exportJob(JobRepository jobRepository, PlatformTransactionManager transactionManager) throws Exception {
+  public Job exportJob(JobRepository jobRepository, PlatformTransactionManager transactionManager, ThreadPoolTaskExecutor executor) throws Exception {
     System.setOut(new PrintStream(System.out, true, "UTF-8"));
     return new JobBuilder("ExportJob", jobRepository)
             .incrementer(new RunIdIncrementer())
             .start(exportStep(jobRepository, transactionManager))
+            .listener(new JobExecutionListener() {
+              @Override
+              public void afterJob(JobExecution jobExecution) {
+                executor.shutdown();
+              }
+            })
             .build();
   }
 }
