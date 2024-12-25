@@ -3,13 +3,12 @@ package com.example.demo.config;
 import com.example.demo.csv.CsvFooterCallback;
 import com.example.demo.csv.CsvHeaderCallback;
 import com.example.demo.domain.model.Yorishiro;
+import com.example.demo.listener.ExecutionListener;
 import com.example.demo.listener.ProcessListener;
 import com.example.demo.listener.ReadListener;
 import com.example.demo.listener.WriteListener;
 import com.example.demo.processor.EvaluationProcessor;
 import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.JobExecutionListener;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
@@ -168,12 +167,7 @@ public class BatchConfig {
     return new JobBuilder("ExportJob", jobRepository)
             .incrementer(new RunIdIncrementer())
             .start(exportStep(jobRepository, transactionManager))
-            .listener(new JobExecutionListener() {
-              @Override
-              public void afterJob(JobExecution jobExecution) {
-                executor.shutdown();
-              }
-            })
+            .listener(new ExecutionListener(executor))
             .build();
   }
 }
