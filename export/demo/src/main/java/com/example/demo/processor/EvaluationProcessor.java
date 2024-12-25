@@ -18,14 +18,16 @@ public class EvaluationProcessor implements ItemProcessor<Yorishiro, Yorishiro> 
       return null;
     }
 
-    if(item.getEvaluation() == 1) return item;
-
-    if(item.getEvaluation() == 0) {
+    if (item.getEvaluation() == 0) {
       System.out.println("憑依魔法：" + item.getName() + "にサンタが憑依しました。");
       System.out.println("生成魔法：サンタが" + item.getName() + "のためにプレゼントを生成しました。");
       System.out.println("憑依解除：サンタは" + item.getName() + "から出ていきました。");
+    } else if (item.getEvaluation() == 1) {
+      System.out.println("憑依魔法：" + item.getName() + "には何も憑依しませんでした。");
     } else {
       System.out.println("憑依魔法：" + item.getName() + "にサタンが憑依しました。");
+      System.out.println("呪術　　：サタンが" + item.getName() + "の寿命を吸い取りました。");
+      System.out.println("憑依解除：サタンは" + item.getName() + "から出ていきました。");
     }
     return item;
   }
