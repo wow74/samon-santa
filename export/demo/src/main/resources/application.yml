@@ -1,0 +1,20 @@
+spring:
+  batch:
+    job:
+      name: ExportJob
+    jdbc:
+      initialize-schema: always
+#      schema: classpath:org/springframework/batch/core/schema-mysql.sql
+  datasource:
+    h2:
+      driver-class-name: org.h2.Driver
+      url: jdbc:h2:mem:santadb;DB_CLOSE_DELAY=-1
+      username: sa
+      password:
+    mysql:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      url: jdbc:mysql://localhost:3306/santa?useSSL=false&serverTimezone=UTC
+      username: root
+      password:
+csv:
+  path: data/yorishiro.csv
