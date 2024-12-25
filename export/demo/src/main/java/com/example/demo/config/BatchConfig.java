@@ -24,8 +24,12 @@ import org.springframework.batch.item.file.transform.DelimitedLineAggregator;
 import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.batch.BatchDataSource;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.WritableResource;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
@@ -35,17 +39,12 @@ import org.springframework.transaction.PlatformTransactionManager;
 import javax.sql.DataSource;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
 
 @Configuration
 public class BatchConfig {
 
   @Value("${csv.path}")
   private String csvPath;
-
-  @Autowired
-  DataSource dataSource;
 
   @Autowired
   private CsvHeaderCallback csvHeaderCallback;
@@ -64,6 +63,34 @@ public class BatchConfig {
 
   @Autowired
   private EvaluationProcessor evaluationProcessor;
+
+  @Bean
+  @ConfigurationProperties("spring.datasource.h2")
+  DataSourceProperties h2Properties() {
+    return new DataSourceProperties();
+  }
+
+  @Bean
+  @ConfigurationProperties("spring.datasource.mysql")
+  DataSourceProperties mysqlProperties() {
+    return new DataSourceProperties();
+  }
+
+  @BatchDataSource
+  @Bean
+  DataSource h2DataSource() {
+    return h2Properties()
+            .initializeDataSourceBuilder()
+            .build();
+  }
+
+  @Primary
+  @Bean
+  DataSource mysqlDataSource() {
+    return mysqlProperties()
+            .initializeDataSourceBuilder()
+            .build();
+  }
 
   @Bean
   @StepScope
@@ -90,7 +117,7 @@ public class BatchConfig {
   @Bean
   public SqlPagingQueryProviderFactoryBean queryProvider() {
     SqlPagingQueryProviderFactoryBean provider = new SqlPagingQueryProviderFactoryBean();
-    provider.setDataSource(dataSource);
+    provider.setDataSource(mysqlDataSource());
     provider.setSelectClause("select id, name, age, evaluation");
     provider.setFromClause("from yorishiro");
     provider.setSortKey("id");
@@ -103,7 +130,7 @@ public class BatchConfig {
     RowMapper<Yorishiro> rowMapper = new BeanPropertyRowMapper<>(Yorishiro.class);
     return new JdbcPagingItemReaderBuilder<Yorishiro>()
             .name("jdbcPagingItemReader")
-            .dataSource(dataSource)
+            .dataSource(mysqlDataSource())
             .queryProvider(queryProvider().getObject())
             .rowMapper(rowMapper)
             .pageSize(5)
